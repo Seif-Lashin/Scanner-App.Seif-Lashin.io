@@ -191,31 +191,44 @@
       flushQueue();
     }
 
-    async function flushQueue() {
-      if (pendingQueue.length === 0 || isSyncing) return;
-      isSyncing = true;
-      updateSyncStatusUI();
+   async function flushQueue() {
+  if (pendingQueue.length === 0 || isSyncing) return;
+  isSyncing = true;
+  updateSyncStatusUI();
 
-      const batchToSend = [...pendingQueue];
+  const batchToSend = [...pendingQueue];
+  const statusMsg = document.getElementById('status-msg');
 
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          body: JSON.stringify({ payload: batchToSend })
-        });
-        const result = await res.json();
-        
-        if (result && result.status === 'success') {
-          pendingQueue = pendingQueue.filter(item => !batchToSend.some(b => b.uuid === item.uuid));
-          localStorage.setItem('pending_scans', JSON.stringify(pendingQueue));
-        }
-      } catch (err) {
-        console.error("Sync error:", err);
-      } finally {
-        isSyncing = false;
-        updateSyncStatusUI();
-      }
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        // text/plain prevents CORS OPTIONS preflight failures in Apps Script
+        "Content-Type": "text/plain;charset=utf-8" 
+      },
+      body: JSON.stringify({ payload: batchToSend })
+    });
+
+    const result = await res.json();
+    
+    if (result && result.status === 'success') {
+      // Remove successfully updated items from local queue
+      pendingQueue = pendingQueue.filter(item => !batchToSend.some(b => b.uuid === item.uuid));
+      localStorage.setItem('pending_scans', JSON.stringify(pendingQueue));
+      statusMsg.innerText = `✅ Synced ${result.count} guest(s) to Sheet!`;
+      setTimeout(() => { if (statusMsg.innerText.includes('Synced')) statusMsg.innerText = ""; }, 3000);
+    } else {
+      // Display server-side error (e.g., sheet lock, missing sheet)
+      statusMsg.innerText = "⚠️ Sync warning: " + (result.message || "Unknown response");
     }
+  } catch (err) {
+    console.error("Sync error:", err);
+    statusMsg.innerText = "❌ Sync failed (Network/CORS error). Retrying...";
+  } finally {
+    isSyncing = false;
+    updateSyncStatusUI();
+  }
+}
 
     function showOverlay(type, title, desc) {
       const overlay = document.getElementById('feedback-overlay');
