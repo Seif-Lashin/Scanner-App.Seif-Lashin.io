@@ -203,7 +203,6 @@
     const res = await fetch(API_URL, {
       method: "POST",
       headers: {
-        // text/plain prevents CORS OPTIONS preflight failures in Apps Script
         "Content-Type": "text/plain;charset=utf-8" 
       },
       body: JSON.stringify({ payload: batchToSend })
@@ -217,13 +216,15 @@
       localStorage.setItem('pending_scans', JSON.stringify(pendingQueue));
       statusMsg.innerText = `✅ Synced ${result.count} guest(s) to Sheet!`;
       setTimeout(() => { if (statusMsg.innerText.includes('Synced')) statusMsg.innerText = ""; }, 3000);
+    } else if (result && result.status === 'busy') {
+      // Retries automatically on the next interval tick (3s)
+      statusMsg.innerText = "⏳ Server busy, retrying sync in a moment...";
     } else {
-      // Display server-side error (e.g., sheet lock, missing sheet)
       statusMsg.innerText = "⚠️ Sync warning: " + (result.message || "Unknown response");
     }
   } catch (err) {
     console.error("Sync error:", err);
-    statusMsg.innerText = "❌ Sync failed (Network/CORS error). Retrying...";
+    statusMsg.innerText = "❌ Network error. Retrying sync...";
   } finally {
     isSyncing = false;
     updateSyncStatusUI();
