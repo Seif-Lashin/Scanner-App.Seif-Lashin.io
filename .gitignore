@@ -1,0 +1,4 @@
+.venv/
+QR code data/**
+!QR code data/.gitkeep
+guests_data.csv
