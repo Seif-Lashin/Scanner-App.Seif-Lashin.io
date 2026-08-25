@@ -67,11 +67,13 @@
         color: #fff;
       }
       #scanner-view,
-      #search-view {
+      #search-view,
+      #settings-view {
         display: none;
       }
       #scanner-view.active,
-      #search-view.active {
+      #search-view.active,
+      #settings-view.active {
         display: block;
       }
       #reader {
@@ -173,6 +175,21 @@
         margin-bottom: 8px;
         text-align: center;
       }
+      .settings-card {
+        background: #1e1e1e;
+        padding: 16px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+      }
+      .settings-card h3 {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+      }
+      .settings-card p {
+        font-size: 0.85rem;
+        color: #aaa;
+        margin-bottom: 12px;
+      }
     </style>
   </head>
   <body>
@@ -184,7 +201,7 @@
       <div id="sync-status" class="badge ok">Sync: 0 Pending</div>
     </div>
 
-    <div id="status-msg">Loading guest data...</div>
+    <div id="status-msg">Loading configuration...</div>
 
     <div class="nav">
       <button id="btn-scan" class="active" onclick="switchTab('scan')">
@@ -192,6 +209,9 @@
       </button>
       <button id="btn-search" onclick="switchTab('search')">
         Manual Search
+      </button>
+      <button id="btn-settings" onclick="switchTab('settings')">
+        Settings
       </button>
     </div>
 
@@ -213,16 +233,27 @@
       <div id="search-results"></div>
     </div>
 
+    <div id="settings-view">
+      <div class="settings-card">
+        <h3>Backend Integration</h3>
+        <p>Paste your Google Apps Script Web App URL below to load guest data and sync check-ins.</p>
+        <input
+          type="text"
+          id="api-url-input"
+          class="search-box"
+          placeholder="https://script.google.com/macros/s/.../exec"
+        />
+        <button class="btn" onclick="saveSettings()">Save & Connect</button>
+      </div>
+    </div>
+
     <div id="feedback-overlay" class="overlay">
       <h1 id="overlay-title">SUCCESS</h1>
       <p id="overlay-desc">Guest Name</p>
     </div>
 
     <script>
-      // ⚠️ PASTE YOUR GOOGLE APPS SCRIPT EXEC URL HERE
-      const API_URL =
-        'https://script.google.com/macros/s/AKfycbzZ_UMgqHo0UWg6KcN9EfckYeWj5ElfHOVwd8OaQrgvcQCpTpYbdY5FqYgdA9-SZQLD3A/exec'
-
+      let API_URL = localStorage.getItem('apps_script_url') || ''
       let guestMap = new Map()
       let pendingQueue = JSON.parse(
         localStorage.getItem('pending_scans') || '[]'
@@ -232,6 +263,8 @@
       let lastScannedUuid = null
       let scanCooldownTimer = null
       let audioCtx = null
+      let syncInterval = null
+      let pollInterval = null
 
       function initAudio() {
         if (!audioCtx)
@@ -273,12 +306,42 @@
 
       window.onload = function () {
         updateSyncStatusUI()
+        document.getElementById('api-url-input').value = API_URL
+
+        if (!API_URL) {
+          document.getElementById('status-msg').innerText =
+            '⚠️ Please set your Apps Script URL in Settings.'
+          switchTab('settings')
+        } else {
+          startApp()
+        }
+      }
+
+      function startApp() {
         loadGuestData()
-        setInterval(flushQueue, 3000)
-        setInterval(loadGuestData, 30000)
+        if (!syncInterval) syncInterval = setInterval(flushQueue, 3000)
+        if (!pollInterval) pollInterval = setInterval(loadGuestData, 30000)
+      }
+
+      function saveSettings() {
+        const inputVal = document.getElementById('api-url-input').value.trim()
+        if (!inputVal) {
+          alert('Please paste a valid Google Apps Script Web App URL.')
+          return
+        }
+
+        API_URL = inputVal
+        localStorage.setItem('apps_script_url', API_URL)
+        document.getElementById('status-msg').innerText =
+          '✅ URL Saved! Connecting...'
+        
+        startApp()
+        switchTab('scan')
       }
 
       async function loadGuestData() {
+        if (!API_URL) return
+
         try {
           const res = await fetch(`${API_URL}?action=getGuests`)
           const data = await res.json()
@@ -362,7 +425,7 @@
       }
 
       async function flushQueue() {
-        if (pendingQueue.length === 0 || isSyncing) return
+        if (!API_URL || pendingQueue.length === 0 || isSyncing) return
         isSyncing = true
         updateSyncStatusUI()
 
@@ -381,7 +444,6 @@
           const result = await res.json()
 
           if (result && result.status === 'success') {
-            // Remove successfully updated items from local queue
             pendingQueue = pendingQueue.filter(
               item => !batchToSend.some(b => b.uuid === item.uuid)
             )
@@ -392,7 +454,6 @@
                 statusMsg.innerText = ''
             }, 3000)
           } else if (result && result.status === 'busy') {
-            // Retries automatically on the next interval tick (3s)
             statusMsg.innerText = '⏳ Server busy, retrying sync in a moment...'
           } else {
             statusMsg.innerText =
@@ -438,7 +499,7 @@
 
         if (guestMap.size === 0) {
           container.innerHTML =
-            '<p style="color:#aaa; text-align:center; padding:12px;">Loading guest list...</p>'
+            '<p style="color:#aaa; text-align:center; padding:12px;">No guest data available.</p>'
           return
         }
 
@@ -480,10 +541,16 @@
           tab === 'scan' ? 'active' : ''
         document.getElementById('btn-search').className =
           tab === 'search' ? 'active' : ''
+        document.getElementById('btn-settings').className =
+          tab === 'settings' ? 'active' : ''
+
         document.getElementById('scanner-view').className =
           tab === 'scan' ? 'active' : ''
         document.getElementById('search-view').className =
           tab === 'search' ? 'active' : ''
+        document.getElementById('settings-view').className =
+          tab === 'settings' ? 'active' : ''
+
         if (tab === 'search') renderSearch()
       }
     </script>
