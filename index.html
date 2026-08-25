@@ -315,6 +315,9 @@
         } else {
           startApp()
         }
+
+        // Attach listener for background app states
+        document.addEventListener('visibilitychange', handleVisibilityChange)
       }
 
       function startApp() {
@@ -366,9 +369,13 @@
 
       function startCamera() {
         initAudio()
-        document.getElementById('start-cam-btn').style.display = 'none'
-
+        
         if (!html5QrCode) html5QrCode = new Html5Qrcode('reader')
+
+        // Don't start again if already scanning
+        if (html5QrCode.isScanning) return
+
+        document.getElementById('start-cam-btn').style.display = 'none'
 
         html5QrCode
           .start(
@@ -381,6 +388,24 @@
               '❌ Camera Error: ' + err
             document.getElementById('start-cam-btn').style.display = 'block'
           })
+      }
+
+      async function stopCamera() {
+        if (html5QrCode && html5QrCode.isScanning) {
+          try {
+            await html5QrCode.stop()
+            document.getElementById('start-cam-btn').style.display = 'block'
+          } catch (err) {
+            console.error('Failed to stop camera hardware:', err)
+          }
+        }
+      }
+
+      async function handleVisibilityChange() {
+        if (document.hidden) {
+          // App minimized or tab switched -> force release camera hardware
+          await stopCamera()
+        }
       }
 
       function onQrCodeScanned(decodedText) {
@@ -535,8 +560,14 @@
           '<p style="color:#666; text-align:center; padding:12px;">No guests match your search</p>'
       }
 
-      function switchTab(tab) {
+      async function switchTab(tab) {
         initAudio()
+
+        // Turn off camera when moving away from scanner mode
+        if (tab !== 'scan') {
+          await stopCamera()
+        }
+
         document.getElementById('btn-scan').className =
           tab === 'scan' ? 'active' : ''
         document.getElementById('btn-search').className =
