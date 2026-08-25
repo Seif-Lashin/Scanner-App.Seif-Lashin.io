@@ -1,297 +1,491 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Event Gate Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: #121212; color: #fff; padding: 12px; max-width: 600px; margin: 0 auto; }
-    .header { display: flex; justify-content: space-between; align-items: center; background: #1e1e1e; padding: 12px 16px; border-radius: 10px; margin-bottom: 12px; }
-    .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; background: #333; }
-    .badge.syncing { background: #e67e22; color: #fff; }
-    .badge.ok { background: #2ecc71; color: #121212; }
-    .nav { display: flex; gap: 8px; margin-bottom: 12px; }
-    .nav button { flex: 1; padding: 12px; border: none; background: #2a2a2a; color: #888; font-weight: bold; border-radius: 8px; cursor: pointer; }
-    .nav button.active { background: #007aff; color: #fff; }
-    #scanner-view, #search-view { display: none; }
-    #scanner-view.active, #search-view.active { display: block; }
-    #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; border: 2px solid #333; min-height: 250px; }
-    .btn { width: 100%; padding: 16px; background: #007aff; color: #fff; border: none; font-weight: bold; font-size: 1rem; border-radius: 8px; cursor: pointer; margin-bottom: 10px; }
-    .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; text-align: center; padding: 20px; }
-    .overlay.success { background: #27ae60; color: #fff; display: flex; }
-    .overlay.error { background: #c0392b; color: #fff; display: flex; }
-    .overlay h1 { font-size: 2.2rem; margin-bottom: 10px; }
-    .overlay p { font-size: 1.2rem; opacity: 0.9; }
-    .search-box { width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #333; background: #1e1e1e; color: #fff; font-size: 1rem; margin-bottom: 12px; }
-    .guest-card { background: #1e1e1e; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
-    .guest-info h4 { font-size: 1rem; margin-bottom: 2px; }
-    .guest-info p { font-size: 0.8rem; color: #aaa; }
-    .checkin-btn { padding: 8px 16px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: #2ecc71; color: #000; }
-    .checkin-btn.attended { background: #444; color: #888; cursor: default; }
-    #status-msg { font-size: 0.85rem; color: #ff9500; margin-bottom: 8px; text-align: center; }
-  </style>
-</head>
-<body>
-
-  <div class="header">
-    <div>
-      <span style="font-size: 0.9rem; color: #888;">Loaded: </span>
-      <strong id="total-count">0</strong>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Event Gate Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          sans-serif;
+      }
+      body {
+        background: #121212;
+        color: #fff;
+        padding: 12px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #1e1e1e;
+        padding: 12px 16px;
+        border-radius: 10px;
+        margin-bottom: 12px;
+      }
+      .badge {
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        background: #333;
+      }
+      .badge.syncing {
+        background: #e67e22;
+        color: #fff;
+      }
+      .badge.ok {
+        background: #2ecc71;
+        color: #121212;
+      }
+      .nav {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .nav button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        background: #2a2a2a;
+        color: #888;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .nav button.active {
+        background: #007aff;
+        color: #fff;
+      }
+      #scanner-view,
+      #search-view {
+        display: none;
+      }
+      #scanner-view.active,
+      #search-view.active {
+        display: block;
+      }
+      #reader {
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #000;
+        border: 2px solid #333;
+        min-height: 250px;
+      }
+      .btn {
+        width: 100%;
+        padding: 16px;
+        background: #007aff;
+        color: #fff;
+        border: none;
+        font-weight: bold;
+        font-size: 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+      .overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        text-align: center;
+        padding: 20px;
+      }
+      .overlay.success {
+        background: #27ae60;
+        color: #fff;
+        display: flex;
+      }
+      .overlay.error {
+        background: #c0392b;
+        color: #fff;
+        display: flex;
+      }
+      .overlay h1 {
+        font-size: 2.2rem;
+        margin-bottom: 10px;
+      }
+      .overlay p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+      }
+      .search-box {
+        width: 100%;
+        padding: 14px;
+        border-radius: 8px;
+        border: 1px solid #333;
+        background: #1e1e1e;
+        color: #fff;
+        font-size: 1rem;
+        margin-bottom: 12px;
+      }
+      .guest-card {
+        background: #1e1e1e;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .guest-info h4 {
+        font-size: 1rem;
+        margin-bottom: 2px;
+      }
+      .guest-info p {
+        font-size: 0.8rem;
+        color: #aaa;
+      }
+      .checkin-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+        background: #2ecc71;
+        color: #000;
+      }
+      .checkin-btn.attended {
+        background: #444;
+        color: #888;
+        cursor: default;
+      }
+      #status-msg {
+        font-size: 0.85rem;
+        color: #ff9500;
+        margin-bottom: 8px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div>
+        <span style="font-size: 0.9rem; color: #888">Loaded: </span>
+        <strong id="total-count">0</strong>
+      </div>
+      <div id="sync-status" class="badge ok">Sync: 0 Pending</div>
     </div>
-    <div id="sync-status" class="badge ok">Sync: 0 Pending</div>
-  </div>
 
-  <div id="status-msg">Loading guest data...</div>
+    <div id="status-msg">Loading guest data...</div>
 
-  <div class="nav">
-    <button id="btn-scan" class="active" onclick="switchTab('scan')">QR Scanner</button>
-    <button id="btn-search" onclick="switchTab('search')">Manual Search</button>
-  </div>
+    <div class="nav">
+      <button id="btn-scan" class="active" onclick="switchTab('scan')">
+        QR Scanner
+      </button>
+      <button id="btn-search" onclick="switchTab('search')">
+        Manual Search
+      </button>
+    </div>
 
-  <div id="scanner-view" class="active">
-    <button id="start-cam-btn" class="btn" onclick="startCamera()">📷 Tap to Enable Live Camera</button>
-    <div id="reader"></div>
-  </div>
+    <div id="scanner-view" class="active">
+      <button id="start-cam-btn" class="btn" onclick="startCamera()">
+        📷 Tap to Enable Live Camera
+      </button>
+      <div id="reader"></div>
+    </div>
 
-  <div id="search-view">
-    <input type="text" id="search-input" class="search-box" placeholder="Type Name or Email to search..." oninput="renderSearch()">
-    <div id="search-results"></div>
-  </div>
+    <div id="search-view">
+      <input
+        type="text"
+        id="search-input"
+        class="search-box"
+        placeholder="Type Name or Email to search..."
+        oninput="renderSearch()"
+      />
+      <div id="search-results"></div>
+    </div>
 
-  <div id="feedback-overlay" class="overlay">
-    <h1 id="overlay-title">SUCCESS</h1>
-    <p id="overlay-desc">Guest Name</p>
-  </div>
+    <div id="feedback-overlay" class="overlay">
+      <h1 id="overlay-title">SUCCESS</h1>
+      <p id="overlay-desc">Guest Name</p>
+    </div>
 
-  <script>
-    // ⚠️ PASTE YOUR GOOGLE APPS SCRIPT EXEC URL HERE
-    const API_URL = "https://script.google.com/macros/s/AKfycbyqfQGnUMg4T4zQLt5WHo6WYrGjVHaTwWg5HhJlapXm16CwxL2aGRM5IbBtAdCEvJpckw/exec";
+    <script>
+      // ⚠️ PASTE YOUR GOOGLE APPS SCRIPT EXEC URL HERE
+      const API_URL =
+        'https://script.google.com/macros/s/AKfycbyqfQGnUMg4T4zQLt5WHo6WYrGjVHaTwWg5HhJlapXm16CwxL2aGRM5IbBtAdCEvJpckw/exec'
 
-    let guestMap = new Map();
-    let pendingQueue = JSON.parse(localStorage.getItem('pending_scans') || '[]');
-    let html5QrCode = null;
-    let isSyncing = false;
-    let lastScannedUuid = null;
-    let scanCooldownTimer = null;
-    let audioCtx = null;
+      let guestMap = new Map()
+      let pendingQueue = JSON.parse(
+        localStorage.getItem('pending_scans') || '[]'
+      )
+      let html5QrCode = null
+      let isSyncing = false
+      let lastScannedUuid = null
+      let scanCooldownTimer = null
+      let audioCtx = null
 
-    function initAudio() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    }
-
-    function playAudio(type) {
-      initAudio();
-      if (!audioCtx) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-
-      if (type === 'success') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.3);
-      } else {
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.4);
+      function initAudio() {
+        if (!audioCtx)
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+        if (audioCtx.state === 'suspended') audioCtx.resume()
       }
-    }
 
-    window.onload = function() {
-      updateSyncStatusUI();
-      loadGuestData();
-      setInterval(flushQueue, 3000);
-      setInterval(loadGuestData, 30000);
-    };
+      function playAudio(type) {
+        initAudio()
+        if (!audioCtx) return
+        const osc = audioCtx.createOscillator()
+        const gain = audioCtx.createGain()
+        osc.connect(gain)
+        gain.connect(audioCtx.destination)
 
-    async function loadGuestData() {
-      try {
-        const res = await fetch(`${API_URL}?action=getGuests`);
-        const data = await res.json();
-        if (!data || data.length === 0) {
-          document.getElementById('status-msg').innerText = "⚠️ No guests found!";
-          return;
+        if (type === 'success') {
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime)
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1)
+          gain.gain.setValueAtTime(0.3, audioCtx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            audioCtx.currentTime + 0.3
+          )
+          osc.start()
+          osc.stop(audioCtx.currentTime + 0.3)
+        } else {
+          osc.type = 'sawtooth'
+          osc.frequency.setValueAtTime(150, audioCtx.currentTime)
+          gain.gain.setValueAtTime(0.4, audioCtx.currentTime)
+          gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            audioCtx.currentTime + 0.4
+          )
+          osc.start()
+          osc.stop(audioCtx.currentTime + 0.4)
         }
-        data.forEach(g => {
-          const existing = guestMap.get(g.uuid);
-          const isAttended = (existing && existing.attended) || g.attended;
-          guestMap.set(g.uuid, { ...g, attended: isAttended });
-        });
-        document.getElementById('total-count').innerText = guestMap.size;
-        document.getElementById('status-msg').innerText = "";
-        renderSearch();
-      } catch (err) {
-        document.getElementById('status-msg').innerText = "❌ Connection Error: " + err.message;
-      }
-    }
-
-    function startCamera() {
-      initAudio();
-      document.getElementById('start-cam-btn').style.display = 'none';
-
-      if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
-
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 15, qrbox: { width: 250, height: 250 } },
-        onQrCodeScanned
-      ).catch(err => {
-        document.getElementById('status-msg').innerText = "❌ Camera Error: " + err;
-        document.getElementById('start-cam-btn').style.display = 'block';
-      });
-    }
-
-    function onQrCodeScanned(decodedText) {
-      const uuid = decodedText.trim();
-      if (uuid === lastScannedUuid) return;
-
-      lastScannedUuid = uuid;
-      clearTimeout(scanCooldownTimer);
-      scanCooldownTimer = setTimeout(() => { lastScannedUuid = null; }, 2000);
-
-      processCheckIn(uuid);
-    }
-
-    function processCheckIn(uuid) {
-      const guest = guestMap.get(uuid);
-
-      if (!guest) {
-        showOverlay('error', 'INVALID TICKET', 'QR Code not found');
-        playAudio('error');
-        return;
       }
 
-      if (guest.attended) {
-        showOverlay('error', 'ALREADY CHECKED IN', guest.name);
-        playAudio('error');
-        return;
+      window.onload = function () {
+        updateSyncStatusUI()
+        loadGuestData()
+        setInterval(flushQueue, 3000)
+        setInterval(loadGuestData, 30000)
       }
 
-      const now = new Date().toISOString();
-      guest.attended = true;
-      pendingQueue.push({ uuid: uuid, timestamp: now });
-      localStorage.setItem('pending_scans', JSON.stringify(pendingQueue));
-
-      updateSyncStatusUI();
-      showOverlay('success', 'WELCOME', guest.name);
-      playAudio('success');
-      renderSearch();
-
-      flushQueue();
-    }
-
-   async function flushQueue() {
-  if (pendingQueue.length === 0 || isSyncing) return;
-  isSyncing = true;
-  updateSyncStatusUI();
-
-  const batchToSend = [...pendingQueue];
-  const statusMsg = document.getElementById('status-msg');
-
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8" 
-      },
-      body: JSON.stringify({ payload: batchToSend })
-    });
-
-    const result = await res.json();
-    
-    if (result && result.status === 'success') {
-      // Remove successfully updated items from local queue
-      pendingQueue = pendingQueue.filter(item => !batchToSend.some(b => b.uuid === item.uuid));
-      localStorage.setItem('pending_scans', JSON.stringify(pendingQueue));
-      statusMsg.innerText = `✅ Synced ${result.count} guest(s) to Sheet!`;
-      setTimeout(() => { if (statusMsg.innerText.includes('Synced')) statusMsg.innerText = ""; }, 3000);
-    } else if (result && result.status === 'busy') {
-      // Retries automatically on the next interval tick (3s)
-      statusMsg.innerText = "⏳ Server busy, retrying sync in a moment...";
-    } else {
-      statusMsg.innerText = "⚠️ Sync warning: " + (result.message || "Unknown response");
-    }
-  } catch (err) {
-    console.error("Sync error:", err);
-    statusMsg.innerText = "❌ Network error. Retrying sync...";
-  } finally {
-    isSyncing = false;
-    updateSyncStatusUI();
-  }
-}
-
-    function showOverlay(type, title, desc) {
-      const overlay = document.getElementById('feedback-overlay');
-      document.getElementById('overlay-title').innerText = title;
-      document.getElementById('overlay-desc').innerText = desc;
-      overlay.className = `overlay ${type}`;
-      setTimeout(() => { overlay.className = 'overlay'; }, 1300);
-    }
-
-    function updateSyncStatusUI() {
-      const statusBadge = document.getElementById('sync-status');
-      const count = pendingQueue.length;
-      if (isSyncing) {
-        statusBadge.className = 'badge syncing';
-        statusBadge.innerText = `Syncing (${count})...`;
-      } else {
-        statusBadge.className = 'badge ok';
-        statusBadge.innerText = `Sync: ${count} Pending`;
-      }
-    }
-
-    function renderSearch() {
-      const query = document.getElementById('search-input').value.toLowerCase().trim();
-      const container = document.getElementById('search-results');
-      
-      if (guestMap.size === 0) {
-        container.innerHTML = '<p style="color:#aaa; text-align:center; padding:12px;">Loading guest list...</p>';
-        return;
+      async function loadGuestData() {
+        try {
+          const res = await fetch(`${API_URL}?action=getGuests`)
+          const data = await res.json()
+          if (!data || data.length === 0) {
+            document.getElementById('status-msg').innerText =
+              '⚠️ No guests found!'
+            return
+          }
+          data.forEach(g => {
+            const existing = guestMap.get(g.uuid)
+            const isAttended = (existing && existing.attended) || g.attended
+            guestMap.set(g.uuid, { ...g, attended: isAttended })
+          })
+          document.getElementById('total-count').innerText = guestMap.size
+          document.getElementById('status-msg').innerText = ''
+          renderSearch()
+        } catch (err) {
+          document.getElementById('status-msg').innerText =
+            '❌ Connection Error: ' + err.message
+        }
       }
 
-      let html = '';
-      let matches = 0;
+      function startCamera() {
+        initAudio()
+        document.getElementById('start-cam-btn').style.display = 'none'
 
-      for (let [uuid, g] of guestMap.entries()) {
-        if (!query || g.name.toLowerCase().includes(query) || g.email.toLowerCase().includes(query)) {
-          matches++;
-          html += `
+        if (!html5QrCode) html5QrCode = new Html5Qrcode('reader')
+
+        html5QrCode
+          .start(
+            { facingMode: 'environment' },
+            { fps: 15, qrbox: { width: 250, height: 250 } },
+            onQrCodeScanned
+          )
+          .catch(err => {
+            document.getElementById('status-msg').innerText =
+              '❌ Camera Error: ' + err
+            document.getElementById('start-cam-btn').style.display = 'block'
+          })
+      }
+
+      function onQrCodeScanned(decodedText) {
+        const uuid = decodedText.trim()
+        if (uuid === lastScannedUuid) return
+
+        lastScannedUuid = uuid
+        clearTimeout(scanCooldownTimer)
+        scanCooldownTimer = setTimeout(() => {
+          lastScannedUuid = null
+        }, 2000)
+
+        processCheckIn(uuid)
+      }
+
+      function processCheckIn(uuid) {
+        const guest = guestMap.get(uuid)
+
+        if (!guest) {
+          showOverlay('error', 'INVALID TICKET', 'QR Code not found')
+          playAudio('error')
+          return
+        }
+
+        if (guest.attended) {
+          showOverlay('error', 'ALREADY CHECKED IN', guest.name)
+          playAudio('error')
+          return
+        }
+
+        const now = new Date().toISOString()
+        guest.attended = true
+        pendingQueue.push({ uuid: uuid, timestamp: now })
+        localStorage.setItem('pending_scans', JSON.stringify(pendingQueue))
+
+        updateSyncStatusUI()
+        showOverlay('success', 'WELCOME', guest.name)
+        playAudio('success')
+        renderSearch()
+
+        flushQueue()
+      }
+
+      async function flushQueue() {
+        if (pendingQueue.length === 0 || isSyncing) return
+        isSyncing = true
+        updateSyncStatusUI()
+
+        const batchToSend = [...pendingQueue]
+        const statusMsg = document.getElementById('status-msg')
+
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify({ payload: batchToSend })
+          })
+
+          const result = await res.json()
+
+          if (result && result.status === 'success') {
+            // Remove successfully updated items from local queue
+            pendingQueue = pendingQueue.filter(
+              item => !batchToSend.some(b => b.uuid === item.uuid)
+            )
+            localStorage.setItem('pending_scans', JSON.stringify(pendingQueue))
+            statusMsg.innerText = `✅ Synced ${result.count} guest(s) to Sheet!`
+            setTimeout(() => {
+              if (statusMsg.innerText.includes('Synced'))
+                statusMsg.innerText = ''
+            }, 3000)
+          } else if (result && result.status === 'busy') {
+            // Retries automatically on the next interval tick (3s)
+            statusMsg.innerText = '⏳ Server busy, retrying sync in a moment...'
+          } else {
+            statusMsg.innerText =
+              '⚠️ Sync warning: ' + (result.message || 'Unknown response')
+          }
+        } catch (err) {
+          console.error('Sync error:', err)
+          statusMsg.innerText = '❌ Network error. Retrying sync...'
+        } finally {
+          isSyncing = false
+          updateSyncStatusUI()
+        }
+      }
+
+      function showOverlay(type, title, desc) {
+        const overlay = document.getElementById('feedback-overlay')
+        document.getElementById('overlay-title').innerText = title
+        document.getElementById('overlay-desc').innerText = desc
+        overlay.className = `overlay ${type}`
+        setTimeout(() => {
+          overlay.className = 'overlay'
+        }, 1300)
+      }
+
+      function updateSyncStatusUI() {
+        const statusBadge = document.getElementById('sync-status')
+        const count = pendingQueue.length
+        if (isSyncing) {
+          statusBadge.className = 'badge syncing'
+          statusBadge.innerText = `Syncing (${count})...`
+        } else {
+          statusBadge.className = 'badge ok'
+          statusBadge.innerText = `Sync: ${count} Pending`
+        }
+      }
+
+      function renderSearch() {
+        const query = document
+          .getElementById('search-input')
+          .value.toLowerCase()
+          .trim()
+        const container = document.getElementById('search-results')
+
+        if (guestMap.size === 0) {
+          container.innerHTML =
+            '<p style="color:#aaa; text-align:center; padding:12px;">Loading guest list...</p>'
+          return
+        }
+
+        let html = ''
+        let matches = 0
+
+        for (let [uuid, g] of guestMap.entries()) {
+          if (
+            !query ||
+            g.name.toLowerCase().includes(query) ||
+            g.email.toLowerCase().includes(query)
+          ) {
+            matches++
+            html += `
             <div class="guest-card">
               <div class="guest-info">
                 <h4>${g.name}</h4>
                 <p>${g.email}</p>
               </div>
               <button class="checkin-btn ${g.attended ? 'attended' : ''}" 
-                      onclick="${g.attended ? '' : `processCheckIn('${g.uuid}')`}">
+                      onclick="${
+                        g.attended ? '' : `processCheckIn('${g.uuid}')`
+                      }">
                 ${g.attended ? 'Attended' : 'Check In'}
               </button>
             </div>
-          `;
-          if (matches >= 20) break;
+          `
+            if (matches >= 20) break
+          }
         }
+        container.innerHTML =
+          html ||
+          '<p style="color:#666; text-align:center; padding:12px;">No guests match your search</p>'
       }
-      container.innerHTML = html || '<p style="color:#666; text-align:center; padding:12px;">No guests match your search</p>';
-    }
 
-    function switchTab(tab) {
-      initAudio();
-      document.getElementById('btn-scan').className = tab === 'scan' ? 'active' : '';
-      document.getElementById('btn-search').className = tab === 'search' ? 'active' : '';
-      document.getElementById('scanner-view').className = tab === 'scan' ? 'active' : '';
-      document.getElementById('search-view').className = tab === 'search' ? 'active' : '';
-      if (tab === 'search') renderSearch();
-    }
-  </script>
-</body>
+      function switchTab(tab) {
+        initAudio()
+        document.getElementById('btn-scan').className =
+          tab === 'scan' ? 'active' : ''
+        document.getElementById('btn-search').className =
+          tab === 'search' ? 'active' : ''
+        document.getElementById('scanner-view').className =
+          tab === 'scan' ? 'active' : ''
+        document.getElementById('search-view').className =
+          tab === 'search' ? 'active' : ''
+        if (tab === 'search') renderSearch()
+      }
+    </script>
+  </body>
 </html>
