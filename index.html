@@ -149,11 +149,12 @@
       }
       .guest-info h4 {
         font-size: 1rem;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
       }
       .guest-info p {
         font-size: 0.8rem;
         color: #aaa;
+        line-height: 1.3;
       }
       .checkin-btn {
         padding: 8px 16px;
@@ -163,6 +164,8 @@
         cursor: pointer;
         background: #2ecc71;
         color: #000;
+        flex-shrink: 0;
+        margin-left: 12px;
       }
       .checkin-btn.attended {
         background: #444;
@@ -535,12 +538,17 @@
 
           if (!query || nameMatch || emailMatch || phoneMatch) {
             matches++
-            const phoneDisplay = g.phone ? ` • ${g.phone}` : ''
+
+            const details = []
+            if (g.email) details.push(g.email)
+            if (g.phone) details.push(`📞 ${g.phone}`)
+            const detailsStr = details.length > 0 ? details.join(' • ') : 'No contact details'
+
             html += `
             <div class="guest-card">
               <div class="guest-info">
-                <h4>${g.name}</h4>
-                <p>${g.email}${phoneDisplay}</p>
+                <h4>${g.name || 'Unnamed Guest'}</h4>
+                <p>${detailsStr}</p>
               </div>
               <button class="checkin-btn ${g.attended ? 'attended' : ''}" 
                       onclick="${
