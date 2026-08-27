@@ -12,11 +12,10 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 # --- MULTI-ACCOUNT CONFIGURATION ---
-# Gmail limit is 500 emails/day per free account (use ~450 to stay safe).
-# Add as many accounts as needed.
+# Gmail limit for free accounts updated to 496 per account/day.
 ACCOUNTS = [
     {
         "email": os.getenv('SENDER_EMAIL_1', 'account1@gmail.com'),
@@ -24,9 +23,17 @@ ACCOUNTS = [
         "sender_name": "Event Team",
         "smtp_server": "smtp.gmail.com",
         "smtp_port": 587,
-        "daily_limit": 450
+        "daily_limit": 496
     },
-    # Add more account dicts here as needed
+    {
+        "email": os.getenv('SENDER_EMAIL_2', 'account2@gmail.com'),
+        "password": os.getenv('SMTP_PASSWORD_2', 'app_pass_2'),
+        "sender_name": "Event Team",
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587,
+        "daily_limit": 496
+    },
+    # Add additional accounts here if needed
 ]
 
 SHEET_FILENAME = "guests_data.csv"
@@ -59,9 +66,14 @@ EMAIL_TEMPLATE_HTML = """
 # %%
 local_file = Path(SHEET_FILENAME)
 if not local_file.exists():
-    raise FileNotFoundError(f"Cannot find '{SHEET_FILENAME}'.")
+    raise FileNotFoundError(f"Cannot find '{SHEET_FILENAME}'. Please run the QR generation script first.")
 
 df = pd.read_csv(local_file)
+
+# Dynamic column discovery to match Google Sheet headers case-insensitively
+name_col = next((col for col in df.columns if col.strip().lower() == 'name'), 'Name')
+email_col = next((col for col in df.columns if col.strip().lower() == 'email'), 'Email')
+uuid_col = next((col for col in df.columns if col.strip().lower() == 'uuid'), 'UUID')
 
 if 'email_sent' not in df.columns:
     df['email_sent'] = False
@@ -139,8 +151,8 @@ else:
         print(f"❌ Initial connection failed for {current_acc['email']}: {e}")
 
     for idx, row in pending_df.iterrows():
-        # Rotate account if limit reached for current sender
-        if emails_sent_by_acc >= current_acc.get('daily_limit', 450):
+        # Rotate account if 496 daily limit is reached
+        if emails_sent_by_acc >= current_acc.get('daily_limit', 496):
             print(f"\n✋ Reached safety limit ({emails_sent_by_acc}) for {current_acc['email']}.")
             if server:
                 try: server.quit() 
@@ -148,7 +160,7 @@ else:
 
             account_idx += 1
             if account_idx >= len(ACCOUNTS):
-                print("🚨 All accounts have reached their limits! Stopping execution.")
+                print("🚨 All accounts have reached their 496 daily limit! Stopping execution.")
                 break
 
             current_acc = ACCOUNTS[account_idx]
@@ -160,9 +172,9 @@ else:
                 print(f"❌ Failed connecting to next account {current_acc['email']}: {e}")
                 break
 
-        guest_name = str(row['name'])
-        guest_email = str(row['email']).strip()
-        guest_uuid = str(row['uuid']).strip()
+        guest_name = str(row[name_col]).strip()
+        guest_email = str(row[email_col]).strip()
+        guest_uuid = str(row[uuid_col]).strip()
 
         try:
             success = send_qr_email(server, current_acc, guest_email, guest_name, guest_uuid)
@@ -177,8 +189,8 @@ else:
 
         except (smtplib.SMTPDataError, smtplib.SMTPResponseException) as quota_err:
             print(f"⚠️ Quota/Rate limit error on {current_acc['email']}: {quota_err}")
-            # Trigger account switch on next iteration
-            emails_sent_by_acc = current_acc.get('daily_limit', 450)
+            # Force account rotation on quota error
+            emails_sent_by_acc = current_acc.get('daily_limit', 496)
             
         except Exception as e:
             print(f"❌ Failed sending to {guest_name} ({guest_email}): {e}")
@@ -187,4 +199,4 @@ else:
         try: server.quit()
         except: pass
 
-    print(f"\n✨ Batch complete. Progress updated in {SHEET_FILENAME}.")
+    print(f"\n✨ Batch complete. Progress saved to {SHEET_FILENAME}.")

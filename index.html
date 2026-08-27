@@ -227,7 +227,7 @@
         type="text"
         id="search-input"
         class="search-box"
-        placeholder="Type Name or Email to search..."
+        placeholder="Type Name, Email, or Phone to search..."
         oninput="renderSearch()"
       />
       <div id="search-results"></div>
@@ -316,7 +316,6 @@
           startApp()
         }
 
-        // Attach listener for background app states
         document.addEventListener('visibilitychange', handleVisibilityChange)
       }
 
@@ -372,7 +371,6 @@
         
         if (!html5QrCode) html5QrCode = new Html5Qrcode('reader')
 
-        // Don't start again if already scanning
         if (html5QrCode.isScanning) return
 
         document.getElementById('start-cam-btn').style.display = 'none'
@@ -403,7 +401,6 @@
 
       async function handleVisibilityChange() {
         if (document.hidden) {
-          // App minimized or tab switched -> force release camera hardware
           await stopCamera()
         }
       }
@@ -532,17 +529,18 @@
         let matches = 0
 
         for (let [uuid, g] of guestMap.entries()) {
-          if (
-            !query ||
-            g.name.toLowerCase().includes(query) ||
-            g.email.toLowerCase().includes(query)
-          ) {
+          const nameMatch = g.name && g.name.toLowerCase().includes(query)
+          const emailMatch = g.email && g.email.toLowerCase().includes(query)
+          const phoneMatch = g.phone && String(g.phone).toLowerCase().includes(query)
+
+          if (!query || nameMatch || emailMatch || phoneMatch) {
             matches++
+            const phoneDisplay = g.phone ? ` • ${g.phone}` : ''
             html += `
             <div class="guest-card">
               <div class="guest-info">
                 <h4>${g.name}</h4>
-                <p>${g.email}</p>
+                <p>${g.email}${phoneDisplay}</p>
               </div>
               <button class="checkin-btn ${g.attended ? 'attended' : ''}" 
                       onclick="${
@@ -563,7 +561,6 @@
       async function switchTab(tab) {
         initAudio()
 
-        // Turn off camera when moving away from scanner mode
         if (tab !== 'scan') {
           await stopCamera()
         }
